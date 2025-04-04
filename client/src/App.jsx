@@ -1,5 +1,5 @@
 import { Route, Routes, Navigate } from "react-router-dom";
-import WorkSpace from "./views/WorkSpace";
+import { WorkSpace } from "./views/WorkSpace";
 
 function App() {
   return (

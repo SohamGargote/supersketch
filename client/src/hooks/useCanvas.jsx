@@ -23,6 +23,7 @@ import {
   uploadElements,
 } from "../helper/element";
 import useKeys from "./useKeys";
+import { socket } from "../api/socket";
 
 export default function useCanvas() {
   const {
@@ -44,6 +45,7 @@ export default function useCanvas() {
     setSelectedElement,
     undo,
     redo,
+    session,
   } = useAppContext();
 
   const canvasRef = useRef(null);
@@ -148,13 +150,30 @@ export default function useCanvas() {
 
     if (action == "draw") {
       const { id } = elements.at(-1);
-      updateElement(
-        id,
-        { x2: clientX, y2: clientY },
-        setElements,
-        elements,
-        true
-      );
+      
+      // Special handling for brush tool
+      if (selectedTool === "brush") {
+        const lastElement = elements.at(-1);
+        updateElement(
+          id,
+          { 
+            points: [...lastElement.points, { x: clientX, y: clientY }],
+            x2: clientX,
+            y2: clientY
+          },
+          setElements,
+          elements,
+          true
+        );
+      } else {
+        updateElement(
+          id,
+          { x2: clientX, y2: clientY },
+          setElements,
+          elements,
+          true
+        );
+      }
     } else if (action == "move") {
       const { id, x1, y1, x2, y2, offsetX, offsetY } = selectedElement;
 
@@ -275,7 +294,16 @@ export default function useCanvas() {
     setPadding(pd);
 
     context.restore();
-  }, [elements, selectedElement, scale, translate, dimension]);
+    
+    // Send elements to the server when they change
+    if (session) {
+      try {
+        socket.emit("getElements", { elements, room: session.room });
+      } catch (error) {
+        console.error("Error sending elements to server:", error);
+      }
+    }
+  }, [elements, selectedElement, scale, translate, dimension, session]);
 
   useEffect(() => {
     const keyDownFunction = (event) => {

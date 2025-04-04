@@ -51,17 +51,30 @@ export const shapes = {
       2 * Math.PI
     );
   },
-  text: (x1, y1, x2, y2, ctx, text = "Text", fontSize = 16) => {
-    // Draw a rectangle for the text area
-    ctx.rect(x1, y1, x2 - x1, y2 - y1);
-    
-    // Set text properties
-    ctx.font = `${fontSize}px Arial`;
-    ctx.textBaseline = "top";
-    
-    // Draw the text
-    ctx.fillText(text, x1 + 5, y1 + 5);
+  text: (x1, y1, x2, y2, ctx) => {
+    // For text elements, we don't draw a rectangle
+    // The text will be drawn directly in the draw function
   },
+  brush: (points, ctx, strokeWidth = 2) => {
+    if (points.length < 2) return;
+    
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    
+    // Use quadratic curves for smoother lines
+    for (let i = 1; i < points.length - 2; i++) {
+      const xc = (points[i].x + points[i + 1].x) / 2;
+      const yc = (points[i].y + points[i + 1].y) / 2;
+      ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc);
+    }
+    
+    // For the last two points, just use a line
+    if (points.length >= 2) {
+      ctx.lineTo(points[points.length - 1].x, points[points.length - 1].y);
+    }
+    
+    ctx.stroke();
+  }
 };
 
 export function distance(a, b) {
@@ -89,6 +102,38 @@ export function getFocuseDemention(element, padding) {
 }
 
 export function getFocuseCorners(element, padding, position) {
+  // Special handling for text elements
+  if (element.tool === "text") {
+    const { x1, y1, text, fontSize } = element;
+    const textWidth = (text || "Text").length * (fontSize || 16) * 0.6;
+    const textHeight = (fontSize || 16) * 1.2;
+    
+    // Create a focus area around the text
+    const textMinX = x1 - 5;
+    const textMaxX = x1 + textWidth + 5;
+    const textMinY = y1 - 5;
+    const textMaxY = y1 + textHeight + 5;
+    
+    return {
+      line: { 
+        fx: textMinX, 
+        fy: textMinY, 
+        fw: textMaxX - textMinX, 
+        fh: textMaxY - textMinY 
+      },
+      corners: [
+        { slug: "tl", x: textMinX - position, y: textMinY - position },
+        { slug: "tr", x: textMaxX - position, y: textMinY - position },
+        { slug: "bl", x: textMinX - position, y: textMaxY - position },
+        { slug: "br", x: textMaxX - position, y: textMaxY - position },
+        { slug: "tt", x: textMinX + (textMaxX - textMinX)/2 - position, y: textMinY - position },
+        { slug: "rr", x: textMaxX - position, y: textMinY + (textMaxY - textMinY)/2 - position },
+        { slug: "ll", x: textMinX - position, y: textMinY + (textMaxY - textMinY)/2 - position },
+        { slug: "bb", x: textMinX + (textMaxX - textMinX)/2 - position, y: textMaxY - position }
+      ]
+    };
+  }
+
   let { fx, fy, fw, fh } = getFocuseDemention(element, padding);
 
   if (element.tool == "line" || element.tool == "arrow") {
@@ -161,6 +206,46 @@ export function drawFocuse(element, context, padding, scale) {
   let round = square;
   const position = square / 2;
 
+  // Special handling for text elements
+  if (element.tool === "text") {
+    const { x1, y1, text, fontSize } = element;
+    const textWidth = (text || "Text").length * (fontSize || 16) * 0.6;
+    const textHeight = (fontSize || 16) * 1.2;
+    
+    // Create a focus area around the text
+    const textMinX = x1 - 5;
+    const textMaxX = x1 + textWidth + 5;
+    const textMinY = y1 - 5;
+    const textMaxY = y1 + textHeight + 5;
+    
+    // Draw focus corners
+    context.lineWidth = lineWidth;
+    context.strokeStyle = "#211C6A";
+    context.fillStyle = "#EEF5FF";
+    
+    // Draw corners at the four corners of the text area
+    const corners = [
+      { x: textMinX - position, y: textMinY - position, slug: "tl" },
+      { x: textMaxX - position, y: textMinY - position, slug: "tr" },
+      { x: textMinX - position, y: textMaxY - position, slug: "bl" },
+      { x: textMaxX - position, y: textMaxY - position, slug: "br" },
+      { x: textMinX + textWidth/2 - position, y: textMinY - position, slug: "tt" },
+      { x: textMaxX - position, y: textMinY + textHeight/2 - position, slug: "rr" },
+      { x: textMinX - position, y: textMinY + textHeight/2 - position, slug: "ll" },
+      { x: textMinX + textWidth/2 - position, y: textMaxY - position, slug: "bb" }
+    ];
+    
+    context.beginPath();
+    corners.forEach((corner) => {
+      context.roundRect(corner.x, corner.y, square, square, round);
+    });
+    context.fill();
+    context.stroke();
+    context.closePath();
+    
+    return;
+  }
+
   let demention = getFocuseCorners(element, padding, position);
   let { fx, fy, fw, fh } = demention.line;
   let corners = demention.corners;
@@ -188,14 +273,26 @@ export function drawFocuse(element, context, padding, scale) {
 }
 
 export function draw(element, context) {
+  const { tool, x1, y1, x2, y2, points = [], strokeWidth = 2 } = element;
+  
+  if (tool === 'brush') {
+    const {
+      strokeColor,
+      opacity,
+    } = element;
+    
+    context.lineWidth = strokeWidth;
+    context.strokeStyle = rgba(strokeColor, opacity);
+    context.lineCap = 'round';
+    context.lineJoin = 'round';
+    
+    shapes.brush(points, context, strokeWidth);
+    return;
+  }
+  
   context.beginPath();
   const {
-    tool,
-    x1,
-    y1,
-    x2,
-    y2,
-    strokeWidth,
+    strokeWidth: elementStrokeWidth,
     strokeColor,
     strokeStyle,
     fill,
@@ -204,24 +301,30 @@ export function draw(element, context) {
     fontSize,
   } = element;
 
-  context.lineWidth = strokeWidth;
+  context.lineWidth = elementStrokeWidth;
   context.strokeStyle = rgba(strokeColor, opacity);
   context.fillStyle = rgba(fill, opacity);
 
   if (strokeStyle == "dashed")
-    context.setLineDash([strokeWidth * 2, strokeWidth * 2]);
-  if (strokeStyle == "dotted") context.setLineDash([strokeWidth, strokeWidth]);
+    context.setLineDash([elementStrokeWidth * 2, elementStrokeWidth * 2]);
+  if (strokeStyle == "dotted") context.setLineDash([elementStrokeWidth, elementStrokeWidth]);
   if (strokeStyle == "solid") context.setLineDash([0, 0]);
 
   if (tool === "text") {
-    shapes[tool](x1, y1, x2, y2, context, text || "Text", fontSize || 16);
+    // For text elements, just draw the text without a border
+    context.beginPath();
+    context.font = `${fontSize || 16}px Arial`;
+    context.textBaseline = "top";
+    context.fillStyle = rgba(strokeColor, opacity);
+    context.fillText(text || "Text", x1, y1);
+    context.closePath();
   } else {
+    // For other shapes, draw normally
     shapes[tool](x1, y1, x2, y2, context);
+    context.fill();
+    context.closePath();
+    if (elementStrokeWidth > 0) context.stroke();
   }
-  
-  context.fill();
-  context.closePath();
-  if (strokeWidth > 0) context.stroke();
 }
 
 function rgba(color, opacity) {

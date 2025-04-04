@@ -6,7 +6,7 @@ import UndoRedo from "./UndoRedo";
 import Menu from "./Menu";
 import Collaboration from "./Collaboration";
 
-export default function Ui() {
+export function Ui() {
   const { selectedElement, selectedTool, style } = useAppContext();
 
   return (
@@ -19,13 +19,8 @@ export default function Ui() {
       {(!["selection", "hand"].includes(selectedTool) || selectedElement) && (
         <Style selectedElement={selectedElement || style} />
       )}
-
-      <footer>
-        <div>
-          <Zoom />
-          <UndoRedo />
-        </div>
-      </footer>
+      <Zoom />
+      <UndoRedo />
     </main>
   );
 }

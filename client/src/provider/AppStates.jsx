@@ -9,6 +9,7 @@ import {
   Lock,
   Arrow,
   Type,
+  Brush,
 } from "../assets/icons";
 import { BACKGROUND_COLORS, STROKE_COLORS, STROKE_STYLES } from "../global/var";
 import { getElementById, minmax } from "../helper/element";
@@ -138,16 +139,42 @@ export function AppContextProvider({ children }) {
         title: "Text",
         toolAction,
       },
+      {
+        slug: "brush",
+        icon: Brush,
+        title: "Brush",
+        toolAction,
+      },
     ],
   ];
 
   useEffect(() => {
     if (session) {
       socket.on("setElements", (data) => {
+        console.log("Received elements from server:", data);
         setElements(data, true, false);
       });
+      
+      socket.on("requestElements", (room) => {
+        console.log(`Received request for elements for room ${room}`);
+        // Send current elements to the server
+        socket.emit("getElements", { elements, room });
+      });
+      
+      // Add error handling
+      socket.on("error", (error) => {
+        console.error("Socket error:", error);
+      });
     }
-  }, [session]);
+    
+    return () => {
+      if (session) {
+        socket.off("setElements");
+        socket.off("requestElements");
+        socket.off("error");
+      }
+    };
+  }, [session, elements]);
 
   return (
     <AppContext.Provider

@@ -1,6 +1,6 @@
 import useCanvas from "../hooks/useCanvas";
 
-export default function Canvas() {
+export function Canvas() {
   const {
     canvasRef,
     dimension,

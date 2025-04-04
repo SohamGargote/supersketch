@@ -2,7 +2,7 @@ import { distance } from "./canvas";
 import { v4 as uuid } from "uuid";
 
 export function isWithinElement(x, y, element) {
-  let { tool, x1, y1, x2, y2, strokeWidth } = element;
+  let { tool, x1, y1, x2, y2, strokeWidth, text, fontSize, points = [] } = element;
 
   switch (tool) {
     case "arrow":
@@ -36,13 +36,39 @@ export function isWithinElement(x, y, element) {
 
     case "diamond":
     case "rectangle":
-    case "text":
       const minX = Math.min(x1, x2) - strokeWidth / 2;
       const maxX = Math.max(x1, x2) + strokeWidth / 2;
       const minY = Math.min(y1, y2) - strokeWidth / 2;
       const maxY = Math.max(y1, y2) + strokeWidth / 2;
 
       return x >= minX && x <= maxX && y >= minY && y <= maxY;
+      
+    case "text":
+      // For text elements, create a text area around the text
+      // The width is estimated based on the text length and font size
+      const textWidth = (text || "Text").length * (fontSize || 16) * 0.6;
+      const textHeight = (fontSize || 16) * 1.2;
+      
+      // Create a selection area around the text
+      const textMinX = x1 - 5;
+      const textMaxX = x1 + textWidth + 5;
+      const textMinY = y1 - 5;
+      const textMaxY = y1 + textHeight + 5;
+      
+      return x >= textMinX && x <= textMaxX && y >= textMinY && y <= textMaxY;
+    case "brush":
+      // Check if point is within any segment of the brush stroke
+      for (let i = 0; i < points.length - 1; i++) {
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        const distance = Math.sqrt(
+          Math.pow(x - p1.x, 2) + Math.pow(y - p1.y, 2)
+        );
+        if (distance <= strokeWidth) {
+          return true;
+        }
+      }
+      return false;
   }
 }
 
@@ -51,7 +77,17 @@ export function getElementPosition(x, y, elements) {
 }
 
 export function createElement(x1, y1, x2, y2, style, tool) {
-  const element = { id: uuid(), x1, y1, x2, y2, ...style, tool };
+  const element = {
+    id: uuid(),
+    x1,
+    y1,
+    x2,
+    y2,
+    ...style,
+    tool,
+    points: tool === 'brush' ? [{ x: x1, y: y1 }] : [],
+    strokeWidth: 2
+  };
   
   // Add text-specific properties for text elements
   if (tool === "text") {
@@ -186,10 +222,20 @@ export function resizeValue(
   x,
   y,
   padding,
-  { x1, x2, y1, y2 },
+  { x1, x2, y1, y2, tool },
   offset,
   elementOffset
 ) {
+  // Special handling for text elements
+  if (tool === "text") {
+    // For text elements, we only update the position (x1, y1)
+    // since text doesn't have a width/height that can be resized
+    return {
+      x1: x,
+      y1: y
+    };
+  }
+
   const getPadding = (condition) => {
     return condition ? padding : padding * -1;
   };
