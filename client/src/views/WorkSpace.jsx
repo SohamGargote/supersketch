@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import Canvas from "../components/Canvas";
 import Ui from "../components/Ui";
+import TextInput from "../components/TextInput";
 import { useSearchParams } from "react-router-dom";
 import { useAppContext } from "../provider/AppStates";
 import { socket } from "../api/socket";
@@ -22,6 +23,7 @@ export default function WorkSpace() {
     <>
       <Ui />
       <Canvas />
+      <TextInput />
     </>
   );
 }

@@ -36,6 +36,7 @@ export function isWithinElement(x, y, element) {
 
     case "diamond":
     case "rectangle":
+    case "text":
       const minX = Math.min(x1, x2) - strokeWidth / 2;
       const maxX = Math.max(x1, x2) + strokeWidth / 2;
       const minY = Math.min(y1, y2) - strokeWidth / 2;
@@ -50,7 +51,15 @@ export function getElementPosition(x, y, elements) {
 }
 
 export function createElement(x1, y1, x2, y2, style, tool) {
-  return { id: uuid(), x1, y1, x2, y2, ...style, tool };
+  const element = { id: uuid(), x1, y1, x2, y2, ...style, tool };
+  
+  // Add text-specific properties for text elements
+  if (tool === "text") {
+    element.text = "Text";
+    element.fontSize = 16;
+  }
+  
+  return element;
 }
 
 export function updateElement(

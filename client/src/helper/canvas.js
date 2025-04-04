@@ -51,6 +51,17 @@ export const shapes = {
       2 * Math.PI
     );
   },
+  text: (x1, y1, x2, y2, ctx, text = "Text", fontSize = 16) => {
+    // Draw a rectangle for the text area
+    ctx.rect(x1, y1, x2 - x1, y2 - y1);
+    
+    // Set text properties
+    ctx.font = `${fontSize}px Arial`;
+    ctx.textBaseline = "top";
+    
+    // Draw the text
+    ctx.fillText(text, x1 + 5, y1 + 5);
+  },
 };
 
 export function distance(a, b) {
@@ -189,6 +200,8 @@ export function draw(element, context) {
     strokeStyle,
     fill,
     opacity,
+    text,
+    fontSize,
   } = element;
 
   context.lineWidth = strokeWidth;
@@ -200,7 +213,12 @@ export function draw(element, context) {
   if (strokeStyle == "dotted") context.setLineDash([strokeWidth, strokeWidth]);
   if (strokeStyle == "solid") context.setLineDash([0, 0]);
 
-  shapes[tool](x1, y1, x2, y2, context);
+  if (tool === "text") {
+    shapes[tool](x1, y1, x2, y2, context, text || "Text", fontSize || 16);
+  } else {
+    shapes[tool](x1, y1, x2, y2, context);
+  }
+  
   context.fill();
   context.closePath();
   if (strokeWidth > 0) context.stroke();
